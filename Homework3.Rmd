@@ -1,0 +1,693 @@
+---
+title: "Homework 3"
+author: "Eryn Blagg"
+date: "3/12/2020"
+output: html_document
+---
+
+
+```{r, include=FALSE}
+library(randomForest)
+library(caret)
+library(glmnet)
+set.seed(998989)
+```
+##A.15
+
+2.
+
+```{r}
+#the data set
+x<-c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1)
+y<-c(1.003,0.807,.669,.628,.554,.511,.531,.502,.610,.701,.942)
+```
+
+
+a. 
+```{r}
+#making omega: 
+make.omega<-function(x){
+  N<-length(x)
+  omega<-matrix(nrow = N, ncol=N)
+  omega[1:2,]<-0
+  omega[,1:2]<-0
+  for (j in 1:(N-2)) {
+    k<-j+1
+    while (j< k & k<= (N-2)){
+      omega[j+2,k+2]<-6*(x[N-1]-x[k])^2*(2*x[N-1]+x[k]-3*x[j])+12*(x[N-1]-x[k])*(x[N-1]-x[j])*(x[N-1]-x[N])
+      k<-k+1
+    }
+    omega[j+2,j+2]<-12*((x[N-1]-x[j])^3+ (x[N]- x[N-1])* ((x[N]- x[j])^2))
+  }
+  return(omega)
+}
+```
+
+
+```{r}
+Omega<-make.omega(x)
+```
+
+```{r}
+#the postive side of omeaga 
+Omega
+```
+
+
+```{r}
+#making it symmetric 
+Omega[lower.tri(Omega)] = t(Omega)[lower.tri(Omega)]
+Omega
+```
+
+
+b. 
+
+
+```{r}
+#the H matrix 
+makeH<-function(x){
+  K<-length(x)
+  H<-matrix(nrow = K, ncol = K)
+  H[,1]<-1
+  H[,2]<-x
+  for(j in 1:(K-2)){
+    foo1<-(x-x[j])^3
+    foo2<-(x-x[K-1])^3
+    foo3<-(x-x[K])^3
+    H[,j+2]<-ifelse(foo1 > 0, foo1, 0)- 
+      ((x[K]-x[j])/(x[K]-x[K-1]))*ifelse(foo2 > 0, foo2, 0) +
+      ((x[K-1]-x[j])/(x[K]-x[K-1]))*ifelse(foo3 > 0, foo3, 0) 
+  }
+  return(H)
+}
+Hmatrix<-makeH(x)
+```
+
+```{r}
+#S_lambda function
+SL<- function(H, omega, lambda){
+  sL<-H%*% solve(t(H)%*% H + lambda*omega)%*% t(H) 
+  return(sL)
+}
+```
+
+```{r}
+#effective df function
+df<-function(H,omega, lambda){
+  degr<-sum(diag(SL(H, omega, lambda )))
+  return(degr)
+}
+
+```
+
+$\lambda=1$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 1)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 1)
+```
+
+$\lambda=0.1$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0.1)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0.1)
+```
+
+$\lambda=0.01$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0.01)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0.01)
+```
+
+$\lambda=0.001$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0.001)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0.001)
+```
+
+$\lambda=0.0001$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0.0001)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0.0001)
+```
+
+$\lambda=0.00001$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0.00001)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0.00001)
+```
+
+$\lambda=0$
+
+```{r}
+SL(Hmatrix, Omega, lambda = 0)
+```
+
+```{r}
+df(Hmatrix, Omega, lambda = 0)
+```
+
+
+c. 
+```{r}
+#penalty matrix K 
+Kpen<- solve(t(Hmatrix))%*%Omega%*%solve(Hmatrix)
+```
+
+```{r}
+#eigen decomposition
+egK<-eigen(Kpen)
+egK
+```
+
+```{r}
+#plotting 
+ekv<-eigen(Kpen)$vectors
+par(mfrow=c(3,4), mar=c(4,4,3,1)+0.1)
+plot(x,ekv[,1],type="l", xlab= "X", ylab="Eigenvect 1")
+plot(x,ekv[,2],type="l", xlab= "X", ylab="Eigenvect 2")
+plot(x,ekv[,3],type="l", xlab= "X", ylab="Eigenvect 3")
+plot(x,ekv[,4],type="l", xlab= "X", ylab="Eigenvect 4")
+plot(x,ekv[,5],type="l", xlab= "X", ylab="Eigenvect 5")
+plot(x,ekv[,6],type="l", xlab= "X", ylab="Eigenvect 6")
+plot(x,ekv[,7],type="l", xlab= "X", ylab="Eigenvect 7")
+plot(x,ekv[,8],type="l", xlab= "X", ylab="Eigenvect 8")
+plot(x,ekv[,9],type="l", xlab= "X", ylab="Eigenvect 9")
+plot(x,ekv[,10],type="l", xlab= "X", ylab="Eigenvect 10")
+plot(x,ekv[,11],type="l", xlab= "X", ylab="Eigenvect 11")
+par(mfrow=c(1,1))
+```
+
+
+
+
+##A.18
+
+
+6. 
+
+
+```{r}
+lanmbd<-seq(.1,2, by=0.001)
+```
+
+
+a. 
+```{r}
+dgf<-c()
+  K<-length(x)
+  B<-cbind(1,x)
+  L<-matrix(nrow = K, ncol = K)
+  kernel<-function(x,y,lambda){
+    exp(-1*((x-y)/lambda)^2)
+  }
+  
+  for( j in 1:length(lanmbd)){
+      for (i in 1:11){
+ W<-diag(kernel(x, x[i],lanmbd[j]))
+ L[i,]<-c(1,x[i])%*%solve(t(B)%*%W%*%B)%*%t(B)%*%W
+      }
+    dgf[j]<-psych::tr(L)
+  }
+  
+  
+```
+
+```{r}
+plot(dgf~log(lanmbd), type="l")
+```
+
+
+
+
+
+
+```{r}
+a<-data.frame(cbind(lanmbd,dgf))
+names(a)[1] <- "lambda"
+names(a)[2]<-"effdeg"
+
+```
+
+
+
+
+Numerical searches for effective degrees of freedom of 
+
+2.5
+```{r}
+dplyr::filter(a, dplyr::between(effdeg, 2.499,2.501))
+```
+
+3
+```{r}
+dplyr::filter(a, between(effdeg, 2.99,3.01))
+```
+
+
+4.
+```{r}
+dplyr::filter(a, between(effdeg, 3.99,4.01))
+```
+
+
+
+```{r}
+dplyr::filter(a, between(effdeg, 4.90,5.01))
+```
+
+
+b.
+
+
+Lambda for 4df is:
+
+$S_{\lambda}$: 
+
+```{r}
+df(Hmatrix,Omega, lambda = 0.00058)
+```
+
+So we get S as: 
+```{r}
+sa<-SL(Hmatrix, Omega, lambda = 0.00058)
+sa
+```
+
+Then for L we have: 
+
+```{r}
+La<-matrix(nrow = 11, ncol = 11)
+ for (i in 1:11){
+ Wa<-diag(kernel(x, x[i],0.227))
+ La[i,]<-c(1,x[i])%*%solve(t(B)%*%Wa%*%B)%*%t(B)%*%Wa
+      }
+```
+ 
+```{r}
+La
+```
+
+The S matrix has a much larger magnitude then the L matrix, and in the L matrix, there is much more variation in the scale of the variablity in the entries. 
+
+
+```{r}
+S1<-sa[1,]
+S3<-sa[3,]
+S5<-sa[5,]
+L1<-La[1,]
+L3<-La[3,]
+L5<-La[5,]
+```
+
+```{r}
+question<-data.frame(cbind(c(S1,S3,S5,L1,L3,L5),c("S1","S1","S1","S1","S1","S1","S1","S1","S1","S1","S1","S3","S3","S3","S3","S3","S3","S3","S3","S3","S3","S3","S5","S5","S5","S5","S5","S5","S5","S5","S5","S5","S5","L1","L1","L1","L1","L1","L1","L1","L1","L1","L1","L1","L3","L3","L3","L3","L3","L3","L3","L3","L3","L3","L3","L5","L5","L5","L5","L5","L5","L5","L5","L5","L5","L5"), c(seq(1,66,by=1))))
+```
+
+```{r}
+ggplot2::ggplot(data=question, mapping=aes(x=X1, y=X3, group= X2))+geom_line(aes(color=X2))
+```
+
+
+##A.25
+### 2.
+a.)
+
+```{r, include=FALSE}
+Fr_200 <- read.csv("~/Downloads/Friedman1-200.csv")
+Fr_5000 <- read.csv("~/Downloads/Friedman1-5000.csv")
+```
+
+
+```{r}
+#The random forest for Friedman200
+F200Rf<-randomForest(y~.,data=Fr_200, type="regression",ntree=500,mtry=4) 
+#the OOB error 
+sqrt(F200Rf$mse[500])
+```
+
+```{r}
+#The random forest for Friedman200
+F5000Rf<-randomForest(y~.,data=Fr_5000, type="regression",ntree=500,mtry=4) 
+#the OOB error 
+sqrt(F5000Rf$mse[500])
+```
+
+
+b.)
+```{r}
+sum((Fr_200$y-F200Rf$predicted)^2)/200
+```
+
+```{r}
+sum((Fr_5000$y-F5000Rf$predicted)^2)/5000
+```
+
+
+
+
+
+
+##A.28
+### 12. 
+
+```{r}
+Ames <- read.csv("~/Downloads/AmesHousingData.csv")
+```
+
+
+Order1
+
+```{r}
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,1],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,1]-RFpredict
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,16]), k=7)
+Ames$KNNdiff=Ames[,16]-as.numeric(E$learn$y)
+Ames$newY2=Ames[,16]+.1*Ames$KNNdiff
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,18], comps = 1)
+Ames$Plpred= Ames[,18]-PLS$y.pred
+```
+
+
+```{r}
+SSE1<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+
+Order 2
+
+```{r}
+Ames<-Ames[1:15]
+```
+
+```{r}
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,1],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,1]-RFpredict
+Ames$newY=Ames[,1]+.1*Ames$RFdiff
+
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,17], comps = 1)
+Ames$Plpred= Ames[,1]-PLS$y.pred
+Ames$newY2=Ames[,17]+.1*Ames$Plpred
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,19]), k=7)
+Ames$KNNdiff=Ames[,19]-as.numeric(E$learn$y)
+```
+
+
+```{r}
+SSE2<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+
+Order 3
+
+```{r}
+Ames<-Ames[1:15]
+```
+
+```{r}
+
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,1], comps = 1)
+Ames$Plpred= Ames[,1]-PLS$y.pred
+Ames$newY=Ames[,1]+.1*Ames$Plpred
+
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,17],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,17]-RFpredict
+Ames$newY2=Ames[,17]+.1*Ames$RFdiff
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,19]), k=7)
+Ames$KNNdiff=Ames[,19]-as.numeric(E$learn$y)
+```
+
+
+```{r}
+SSE3<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+
+Order 4
+
+```{r}
+Ames<-Ames[1:15]
+```
+
+```{r}
+
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,1], comps = 1)
+Ames$Plpred= Ames[,1]-PLS$y.pred
+Ames$newY=Ames[,1]+.1*Ames$Plpred
+
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,17]), k=7)
+Ames$KNNdiff=Ames[,17]-as.numeric(E$learn$y)
+Ames$newY2=Ames[,17]+.1*Ames$KNNdiff
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,19],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,19]-RFpredict
+
+```
+
+
+```{r}
+SSE4<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+Order 5
+
+```{r}
+Ames<-Ames[1:15]
+```
+
+```{r}
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,1]), k=7)
+Ames$KNNdiff=Ames[,1]-as.numeric(E$learn$y)
+Ames$newY=Ames[,1]+.1*Ames$KNNdiff
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,17], comps = 1)
+Ames$Plpred= Ames[,17]-PLS$y.pred
+Ames$newY2=Ames[,17]+.1*Ames$Plpred
+
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,19],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,19]-RFpredict
+
+```
+
+
+```{r}
+SSE5<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+
+
+Order 6
+
+```{r}
+Ames<-Ames[1:15]
+```
+
+```{r}
+#7NN of the residuals 
+E<-knn3(data=Ames,x=Ames[,2:15], y=as.factor(Ames[,1]), k=7)
+Ames$KNNdiff=Ames[,1]-as.numeric(E$learn$y)
+Ames$newY=Ames[,1]+.1*Ames$KNNdiff
+#the RF model
+defultRF<-randomForest(data=Ames,y=Ames[,17],x=Ames[,2:15])
+RFpredict<-defultRF$predicted 
+Ames$RFdiff=Ames[,17]-RFpredict
+Ames$newY2=Ames[,17]+.1*Ames$RFdiff
+
+#plsdepo-plsreg1
+PLS<-plsdepot::plsreg1(predictors = Ames[,2:15], response = Ames[,19], comps = 1)
+Ames$Plpred= Ames[,19]-PLS$y.pred
+
+```
+
+
+```{r}
+SSE6<-sum((Ames[,1]-(Ames[,1]+.1*Ames$KNNdiff+.1*Ames$Plpred))^2)/88
+```
+
+
+
+
+
+
+
+
+
+##Extra: 
+```{r}
+#importing the data set
+WhiteWine <- read.csv("~/Downloads/WhiteWine.csv")
+```
+
+
+A. 
+i) kNN prediction:
+```{r}
+wineknn<-train(y=WhiteWine$quality,x=WhiteWine[,1:11],
+               method="knn",preProcess=c("center","scale"),
+               tuneGrid=data.frame(k=seq(1,50, 2)),
+               trControl=trainControl(method="repeatedcv",repeats=70,number=8))
+```
+
+
+
+
+
+ii) elastic net
+```{r}
+Enet.grid <-expand.grid(alpha=seq(0,.0001,length.out=5),
+                        lambda=seq(11000,15000,length.out=5))
+
+wineENet<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+                method="glmnet",tuneGrid = Enet.grid,
+                trControl=trainControl(method="repeatedcv",repeats=100,number=80))
+```
+
+
+
+
+iii)PCR prediction 
+```{r}
+winePcr<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+           method="pcr",preProcess=c("center","scale"),
+           tuneGrid=data.frame(ncomp=1:10),
+           trControl=trainControl(method="repeatedcv",repeats=100,number=80))
+```
+
+
+iv)PLS prediction 
+
+```{r}
+winePLS<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+           method="pls",preProcess=c("center","scale"),
+           tuneGrid=data.frame(ncomp=1:10),
+           trControl=trainControl(method="repeatedcv",repeats=100,number=80))
+```
+
+
+
+
+v) MARS prediction (implemented in earth) 
+
+```{r}
+cv.control <-trainControl(method="repeatedcv",repeats=80,number=10)
+MARS.grid <-expand.grid(nprune=c(1:15),
+                        degree=c(1:3))
+wineMARS<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+                method="earth",preProcess =c("center","scale"),
+                tuneGrid=MARS.grid,trControl=cv.control)
+```
+
+
+
+vi)regression tree prediction 
+```{r}
+wineTree<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+            tuneGrid=data.frame(cp=seq(.001,.015,length.out =15)),
+            method="rpart",trControl=trainControl(method="repeatedcv",repeats=100,number=8))
+```
+
+
+
+vii)random forest prediction 
+```{r}
+wineForest<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],
+              tuneGrid=data.frame(mtry=1:8),method="rf",ntree=8,
+              trControl=trainControl(method="repeatedcv",repeats=80,number=8))
+```
+
+
+
+viii)boosted trees prediction 
+
+```{r}
+gbm.grid <-expand.grid(n.trees =seq(115,135,length.out=3),
+                       interaction.depth =seq(1,3),
+                       shrinkage =seq(.02,0.6,length.out=3),
+                       n.minobsinnode =seq(5,7,length.out=3))
+wineGbm<-train(y=WhiteWine[,12],x=WhiteWine[,1:11],tuneGrid=gbm.grid,method="gbm",
+               verbose=FALSE,trControl=trainControl(method="repeatedcv",repeats=80,number=8))
+```
+
+
+
+
+
+ix)Cubist prediction 
+
+```{r}
+wineCubist<-train(x = WhiteWine[,1:11],y= WhiteWine[,12],
+              method ="cubist",preProc =c("center", "scale"),
+              trControl =trainControl(method="repeatedcv",repeats=60,number=8))
+```
+
+
+
+```{r}
+wineols<-lm(quality~., data=WhiteWine)
+```
+
+Then we have: 
+
+```{r}
+winepred<-sapply(list(wineknn,wineENet, winePcr,winePLS, wineMARS, wineTree, wineForest,wineGbm, wineCubist,wineols))
+colnames(winepred)<-c("KNN", "Enet", "PCR", "PLS", "MARS", "Tree", "Forest", "Boosted", "Cubist", "OLS")
+```
+
+
+b.
+
+```{r}
+res<-data.frame(cbind(Quality=WhiteWine$quality, winepred))
+```
+
+```{r}
+ggpairs(res)
+```
+
+```{r}
+round(cor(res), digits=2)
+```
+
+c. 
+
+```{r}
+
+```
+
